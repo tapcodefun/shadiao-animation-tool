@@ -66,7 +66,13 @@ export function ApiKeyManager() {
         }),
       });
 
-      const data = await res.json();
+      let data: { error?: string; key?: unknown };
+      try {
+        data = await res.json();
+      } catch {
+        setToast({ message: `服务器错误 (HTTP ${res.status})`, type: 'error' });
+        return;
+      }
 
       if (res.ok) {
         setToast({ message: 'API Key 添加成功！', type: 'success' });
@@ -78,8 +84,8 @@ export function ApiKeyManager() {
       } else {
         setToast({ message: data.error || '添加失败', type: 'error' });
       }
-    } catch {
-      setToast({ message: '网络错误', type: 'error' });
+    } catch (err) {
+      setToast({ message: `网络错误: ${err instanceof Error ? err.message : '未知错误'}`, type: 'error' });
     } finally {
       setLoading(false);
     }

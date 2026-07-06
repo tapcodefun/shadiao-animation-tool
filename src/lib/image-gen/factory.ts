@@ -5,6 +5,24 @@ import { WanxiangAdapter } from './adapters/wanxiang';
 export type Platform = 'wanxiang' | 'cogview' | 'openai' | 'siliconflow' | 'custom';
 
 /**
+ * 获取平台对应的默认 base URL
+ */
+export function getDefaultBaseUrl(platform: Platform): string {
+  switch (platform) {
+    case 'cogview':
+      return 'https://open.bigmodel.cn/api/paas/v4';
+    case 'siliconflow':
+      return 'https://api.siliconflow.cn/v1';
+    case 'openai':
+      return 'https://api.openai.com/v1';
+    case 'wanxiang':
+      return 'https://dashscope.aliyuncs.com/api/v1';
+    default:
+      return 'https://api.openai.com/v1';
+  }
+}
+
+/**
  * 适配器工厂 - 根据平台和配置创建对应的适配器
  */
 export function createAdapter(
@@ -12,6 +30,8 @@ export function createAdapter(
   apiKey: string,
   baseUrl?: string
 ): ImageGenAdapter {
+  const url = baseUrl || getDefaultBaseUrl(platform);
+
   switch (platform) {
     case 'wanxiang':
       return new WanxiangAdapter();
@@ -20,29 +40,10 @@ export function createAdapter(
     case 'openai':
     case 'siliconflow':
     case 'custom':
-      // 这些平台都兼容 OpenAI 格式
-      // 智谱: baseUrl = https://open.bigmodel.cn/api/paas/v4/
-      // 硅基流动: baseUrl = https://api.siliconflow.cn/v1
-      return new OpenAICompatibleAdapter();
+      return new OpenAICompatibleAdapter(url);
 
     default:
-      return new OpenAICompatibleAdapter();
-  }
-}
-
-/**
- * 获取平台对应的默认 base URL
- */
-export function getDefaultBaseUrl(platform: Platform): string | undefined {
-  switch (platform) {
-    case 'cogview':
-      return 'https://open.bigmodel.cn/api/paas/v4/';
-    case 'siliconflow':
-      return 'https://api.siliconflow.cn/v1';
-    case 'openai':
-      return 'https://api.openai.com/v1';
-    default:
-      return undefined;
+      return new OpenAICompatibleAdapter(url);
   }
 }
 
@@ -63,7 +64,6 @@ export async function generateImage(
   params: GenerateParams,
   baseUrl?: string
 ): Promise<GenerateResult> {
-  // 设置临时 API Key（避免修改全局变量）
   process.env.TEMP_API_KEY = apiKey;
 
   try {

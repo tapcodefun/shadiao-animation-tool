@@ -7,6 +7,14 @@ import { GenerateParams, GenerateResult, ModelInfo } from '../types';
  */
 export class OpenAICompatibleAdapter extends BaseAdapter {
   platform = 'openai';
+
+  private baseUrl: string;
+
+  constructor(baseUrl?: string) {
+    super();
+    this.baseUrl = baseUrl || 'https://api.openai.com/v1';
+  }
+
   models: ModelInfo[] = [
     {
       id: 'dall-e-3',
@@ -44,19 +52,23 @@ export class OpenAICompatibleAdapter extends BaseAdapter {
       supportsNegativePrompt: true,
       strengths: ['中文优化', '色彩丰富'],
     },
+    {
+      id: 'stabilityai/stable-diffusion-xl-base-1.0',
+      name: 'SDXL 1.0',
+      platform: 'siliconflow',
+      maxResolution: { width: 1024, height: 1024 },
+      supportsReferenceImage: false,
+      supportsNegativePrompt: true,
+      strengths: ['经典模型', '稳定'],
+    },
   ];
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    // 动态导入 openai 避免 edge runtime 问题
     const OpenAI = (await import('openai')).default;
-
-    const baseURL = params.model.startsWith('cogView')
-      ? 'https://open.bigmodel.cn/api/paas/v4/'
-      : undefined;
 
     const client = new OpenAI({
       apiKey: process.env.TEMP_API_KEY || '',
-      baseURL,
+      baseURL: this.baseUrl,
     });
 
     const response = await client.images.generate({
@@ -83,13 +95,20 @@ export class OpenAICompatibleAdapter extends BaseAdapter {
 
   async validateApiKey(apiKey: string, baseUrl?: string): Promise<boolean> {
     try {
-      const OpenAI = (await import('openai')).default;
-      const client = new OpenAI({
-        apiKey,
-        baseURL: baseUrl || undefined,
+      const url = baseUrl || this.baseUrl;
+
+      // 用简单的 HTTP 请求验证，避免 openai SDK 的复杂行为
+      const response = await fetch(`${url}/models`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
       });
-      await client.models.list();
-      return true;
+
+      // 200 说明认证成功，401/403 说明 Key 无效
+      return response.ok;
     } catch {
       return false;
     }

@@ -57,10 +57,20 @@ export async function POST(req: NextRequest) {
     }
 
     // 验证 API Key 有效性
-    const isValid = await validateApiKey(platform as Platform, apiKey, baseUrl);
+    let isValid = false;
+    try {
+      isValid = await validateApiKey(platform as Platform, apiKey, baseUrl);
+    } catch (validationError) {
+      console.error('API Key validation error:', validationError);
+      return NextResponse.json(
+        { error: `API Key 验证时发生错误: ${validationError instanceof Error ? validationError.message : '未知错误'}` },
+        { status: 400 }
+      );
+    }
+
     if (!isValid) {
       return NextResponse.json(
-        { error: 'API Key 验证失败，请检查 Key 是否正确' },
+        { error: `API Key 验证失败，请检查 Key 是否正确。平台: ${platform}${baseUrl ? ', 地址: ' + baseUrl : ''}` },
         { status: 400 }
       );
     }
