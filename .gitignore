@@ -45,3 +45,7 @@ output/
 data/
 *.tar.gz
 video-tool.tar.gz
+install_part_*
+install.sh
+pnpm-lock.yaml
+pnpm-workspace.yaml
